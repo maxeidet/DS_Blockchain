@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -38,6 +39,7 @@ type HandshakeMessage struct {
 	BestHeight    int    `json:"best_height"`
 	BestHash      string `json:"best_hash"`
 	GenesisHash   string `json:"genesis_hash"`
+	KnownPeers    []string `json:"known_peers"`
 }
 
 type GetChainMessage struct{}
@@ -63,7 +65,8 @@ type P2PNode struct {
 	DiscoveryPort int
 
 	Peers map[string]bool
-
+	MaxPeers      int
+	MaxKnownPeers int
 	mu sync.Mutex
 
 	SeenTxs    map[string]bool
@@ -78,9 +81,16 @@ func NewP2PNode(
 	discoveryPort int,
 ) *P2PNode {
 	peerMap := make(map[string]bool)
+
+	maxPeers := 6
+	count := 0
 	for _, peer := range peers {
 		if peer != "" && peer != advertiseAddr {
+			if count >= maxPeers {
+				break
+			}
 			peerMap[peer] = true
+			count++
 		}
 	}
 
@@ -92,6 +102,8 @@ func NewP2PNode(
 		AdvertiseAddr: advertiseAddr,
 		NodeID:        fmt.Sprintf("node-%d-%s", id, advertiseAddr),
 		DiscoveryPort: discoveryPort,
+		MaxPeers:      6,
+		MaxKnownPeers: 3,
 		Peers:         peerMap,
 		SeenTxs:       make(map[string]bool),
 		SeenBlocks:    make(map[string]bool),
@@ -266,6 +278,11 @@ func (n *P2PNode) addPeer(peer string) bool {
 		return false
 	}
 
+	if len(n.Peers) >= n.MaxPeers {
+		log.Printf("peer limit reached (%d), skipping peer %s\n", n.MaxPeers, peer)
+		return false
+	}
+
 	n.Peers[peer] = true
 	return true
 }
@@ -430,6 +447,25 @@ func (n *P2PNode) handleConnection(conn net.Conn) {
 }
 
 func (n *P2PNode) buildHandshake() HandshakeMessage {
+	n.mu.Lock()
+	peers := make([]string, 0, len(n.Peers))
+	for peer := range n.Peers {
+		peers = append(peers, peer)
+	}
+	maxKnownPeers := n.MaxKnownPeers
+	n.mu.Unlock()
+
+	if len(peers) > 1 {
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		r.Shuffle(len(peers), func(i, j int) {
+			peers[i], peers[j] = peers[j], peers[i]
+		})
+	}
+
+	if len(peers) > maxKnownPeers {
+		peers = peers[:maxKnownPeers]
+	}
+
 	return HandshakeMessage{
 		Version:       1,
 		NetworkID:     n.BC.NetworkID,
@@ -438,6 +474,7 @@ func (n *P2PNode) buildHandshake() HandshakeMessage {
 		BestHeight:    n.BC.Height(),
 		BestHash:      n.BC.BestHash(),
 		GenesisHash:   n.BC.GenesisHash(),
+		KnownPeers:    peers,
 	}
 }
 
@@ -450,6 +487,23 @@ func (n *P2PNode) handleHandshake(hs HandshakeMessage) bool {
 	if hs.GenesisHash != n.BC.GenesisHash() {
 		log.Printf("rejecting peer %s: genesis hash mismatch\n", hs.AdvertiseAddr)
 		return false
+	}
+	
+	for _, peer := range hs.KnownPeers {
+		if peer == "" || peer == n.AdvertiseAddr {
+			continue
+		}
+
+		if n.addPeer(peer) {
+			log.Printf("learned new peer %s from %s\n", peer, hs.AdvertiseAddr)
+
+			// handshakea direkt med nya peeren
+			go func(p string) {
+				if err := n.sendHandshakeToPeer(p); err != nil {
+					log.Printf("handshake to learned peer %s failed: %v\n", p, err)
+				}
+			}(peer)
+		}
 	}
 
 	if hs.AdvertiseAddr != "" && hs.AdvertiseAddr != n.AdvertiseAddr {
