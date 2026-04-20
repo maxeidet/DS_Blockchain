@@ -54,8 +54,12 @@ export async function registerPeer(nodeUrl, peerUrl) {
 // ─── Mining & Transactions ────────────────────────────────────────────────────
 
 /** Mine a new block on a node */
-export async function mineBlock(nodeUrl) {
-  return fetchWithTimeout(`${nodeUrl}/mine`);
+export async function mineBlock(nodeUrl, data = 'Mined via BlockView') {
+  return fetchWithTimeout(`${nodeUrl}/mine`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data }),
+  });
 }
 
 /** Get pending transactions in the mempool */

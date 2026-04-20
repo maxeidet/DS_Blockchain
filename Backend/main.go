@@ -56,6 +56,14 @@ func registerNodes(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
+func getNodes(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"nodes": bc.Nodes,
+	})
+}
+
 func resolveConflicts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -79,6 +87,7 @@ func main() {
 
 	http.HandleFunc("/chain", getChain)
 	http.HandleFunc("/mine", mineBlock)
+	http.HandleFunc("/nodes", getNodes)
 	http.HandleFunc("/nodes/register", registerNodes)
 	http.HandleFunc("/nodes/resolve", resolveConflicts)
 

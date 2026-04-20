@@ -77,7 +77,7 @@ export default function App() {
             <input
               value={newNodeUrl}
               onChange={e => setNewNodeUrl(e.target.value)}
-              placeholder="http://localhost:5001"
+              placeholder="http://localhost:8080"
               style={{ flex: 1, fontSize: '0.8rem' }}
             />
             <button className="btn btn-primary" type="submit" style={{ padding: '8px 14px', flexShrink: 0 }}>+</button>

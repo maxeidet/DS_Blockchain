@@ -5,9 +5,9 @@ const STORAGE_KEY = 'blockchain_nodes';
 function loadNodes() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : ['http://localhost:5000'];
+    return stored ? JSON.parse(stored) : ['http://localhost:8080'];
   } catch {
-    return ['http://localhost:5000'];
+    return ['http://localhost:8080'];
   }
 }
 

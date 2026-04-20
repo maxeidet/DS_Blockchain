@@ -7,12 +7,12 @@ import (
 )
 
 type Block struct {
-	Index     int
-	Timestamp int64
-	Data      string
-	PrevHash  string
-	Hash      string
-	Nonce     int
+	Index     int    `json:"index"`
+	Timestamp int64  `json:"timestamp"`
+	Data      string `json:"data"`
+	PrevHash  string `json:"previous_hash"`
+	Hash      string `json:"hash"`
+	Nonce     int    `json:"nonce"`
 }
 
 func NewBlock(index int, data, prevHash string) *Block {
