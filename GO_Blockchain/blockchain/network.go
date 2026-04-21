@@ -1,5 +1,7 @@
 package blockchain
 
+import "sort"
+
 type NetworkParams struct {
 	NetworkID        string
 	Difficulty       int
@@ -9,31 +11,37 @@ type NetworkParams struct {
 }
 
 func DefaultNetworkParams() NetworkParams {
+	faucet, err := FaucetWallet()
+	if err != nil {
+		panic(err)
+	}
+
 	return NetworkParams{
-		NetworkID:        "go-blockchain-demo",
-		Difficulty:       3,
-		MiningReward:     50,
-		GenesisTimestamp: 1700000000000,
+		NetworkID:    "go-blockchain-demo",
+		Difficulty:   3,
+		MiningReward: 50,
 		GenesisBalances: map[string]int{
+			faucet.Address: 1000,
 			"addr_alice":   100,
 			"addr_bob":     50,
 			"addr_charlie": 25,
 		},
+		GenesisTimestamp: 1700000000000,
 	}
 }
 
 func BuildGenesisTransactions(params NetworkParams) []Transaction {
 	txs := make([]Transaction, 0, len(params.GenesisBalances))
 
-	// Viktigt: ordningen måste vara deterministisk
-	addresses := []string{"addr_alice", "addr_bob", "addr_charlie"}
+	// Viktigt: ordningen måste vara deterministisk på alla noder
+	addresses := make([]string, 0, len(params.GenesisBalances))
+	for addr := range params.GenesisBalances {
+		addresses = append(addresses, addr)
+	}
+	sort.Strings(addresses)
 
 	for _, addr := range addresses {
-		amount, ok := params.GenesisBalances[addr]
-		if !ok {
-			continue
-		}
-
+		amount := params.GenesisBalances[addr]
 		txs = append(txs, NewGenesisTransactionWithTimestamp(addr, amount, params.GenesisTimestamp))
 	}
 

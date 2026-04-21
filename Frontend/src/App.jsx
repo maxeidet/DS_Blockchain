@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useNodeRegistry } from './hooks/useNodeRegistry';
 import { useNodeData }     from './hooks/useNodeData';
 import NodeCard            from './components/NodeCard';
-import BlockList           from './components/BlockList';
+import BlockChainView      from './components/BlockList';
 import NodeActions         from './components/NodeActions';
 
 // ─── Per-node data wrapper ────────────────────────────────────────────────────
@@ -37,7 +37,8 @@ export default function App() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: 'var(--bg-secondary)',
+        background: '#fff',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
@@ -63,7 +64,7 @@ export default function App() {
           borderRight: '1px solid var(--border)',
           padding: '20px 16px',
           overflowY: 'auto',
-          background: 'var(--bg-secondary)',
+          background: '#fff',
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
@@ -148,13 +149,16 @@ export default function App() {
                   </div>
 
                   {/* Tab content */}
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-                    {activeTab === 'chain' ? (
-                      <BlockList chain={data.chain} />
-                    ) : (
-                      <NodeActions nodeUrl={effective} onAction={data.refetch} />
-                    )}
-                  </div>
+                  {activeTab === 'chain' ? (
+                    /* BlockChainView manages its own layout + scroll */
+                    <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                      <BlockChainView blocks={data.blocks} />
+                    </div>
+                  ) : (
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+                      <NodeActions nodeUrl={effective} data={data} onAction={data.refetch} />
+                    </div>
+                  )}
                 </>
               )}
             </NodeDataProvider>

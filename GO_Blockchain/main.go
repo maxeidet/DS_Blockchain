@@ -21,11 +21,25 @@ func main() {
 	params := blockchain.DefaultNetworkParams()
 	bc := blockchain.NewBlockchain(params)
 
+	nodeWallet, err := blockchain.NewWallet()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	faucetWallet, err := blockchain.FaucetWallet()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	fmt.Println("Network ID:", params.NetworkID)
 	fmt.Println("Genesis balances:")
 	for addr, amount := range params.GenesisBalances {
 		fmt.Printf("%s -> %d\n", addr, amount)
 	}
+	fmt.Println()
+
+	fmt.Println("Node wallet address:", nodeWallet.Address)
+	fmt.Println("Faucet wallet address:", faucetWallet.Address)
 	fmt.Println()
 
 	var peers []string
@@ -51,8 +65,20 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	api := blockchain.NewAPI(bc, p2pNode)
+	api := blockchain.NewAPI(bc, p2pNode, nodeWallet, faucetWallet)
 	api.RegisterRoutes(mux)
+
+	// CORS middleware — allows the React frontend (any origin) to reach the API
+	corsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
 
 	fmt.Println("HTTP API running on", *apiAddr)
 	fmt.Println("P2P listen address:", *p2pAddr)
@@ -67,13 +93,10 @@ func main() {
 	fmt.Println("GET  /balance/{address}")
 	fmt.Println("GET  /peers")
 	fmt.Println("POST /transactions")
+	fmt.Println("POST /transactions/manual")
+	fmt.Println("POST /faucet")
 	fmt.Println("POST /mine")
 	fmt.Println()
-	fmt.Println("Demo addresses:")
-	fmt.Println("addr_alice")
-	fmt.Println("addr_bob")
-	fmt.Println("addr_charlie")
-	fmt.Println()
 
-	log.Fatal(http.ListenAndServe(*apiAddr, mux))
+	log.Fatal(http.ListenAndServe(*apiAddr, corsHandler))
 }

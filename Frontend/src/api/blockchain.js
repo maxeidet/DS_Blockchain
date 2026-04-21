@@ -1,10 +1,16 @@
 /**
- * Blockchain Node API Client
+ * Blockchain Node API Client — GO_Blockchain
  *
- * Each node exposes an HTTP API on localhost at a given port.
- * This module provides functions to query any node by its base URL.
+ * Matches the HTTP API exposed by GO_Blockchain/main.go:
  *
- * Adjust endpoint paths to match your actual backend routes.
+ *   GET  /status
+ *   GET  /blocks
+ *   GET  /mempool
+ *   GET  /balance/{address}
+ *   GET  /peers
+ *   POST /transactions        { to, amount }
+ *   POST /faucet              { to, amount }
+ *   POST /mine                { miner_address }
  */
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -23,62 +29,100 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUT_M
   }
 }
 
+// ─── Status ───────────────────────────────────────────────────────────────────
+
+/**
+ * GET /status
+ * Returns: { height, difficulty, mining_reward, mempool_size, is_valid,
+ *             wallet_address, wallet_nonce, faucet_address }
+ */
+export async function getStatus(nodeUrl) {
+  return fetchWithTimeout(`${nodeUrl}/status`);
+}
+
 // ─── Chain ────────────────────────────────────────────────────────────────────
 
-/** Get the full blockchain from a node */
-export async function getChain(nodeUrl) {
-  return fetchWithTimeout(`${nodeUrl}/chain`);
+/**
+ * GET /blocks
+ * Returns: Block[] — array of all blocks in order
+ */
+export async function getBlocks(nodeUrl) {
+  return fetchWithTimeout(`${nodeUrl}/blocks`);
 }
 
-/** Get blockchain length / metadata */
-export async function getChainInfo(nodeUrl) {
-  return fetchWithTimeout(`${nodeUrl}/chain/info`);
+// ─── Mempool ──────────────────────────────────────────────────────────────────
+
+/**
+ * GET /mempool
+ * Returns: Transaction[] — pending transactions
+ */
+export async function getMempool(nodeUrl) {
+  return fetchWithTimeout(`${nodeUrl}/mempool`);
 }
 
-// ─── Nodes ────────────────────────────────────────────────────────────────────
+// ─── Peers ────────────────────────────────────────────────────────────────────
 
-/** Get the peer nodes known to this node */
+/**
+ * GET /peers
+ * Returns: string[] — list of peer addresses
+ */
 export async function getPeers(nodeUrl) {
-  return fetchWithTimeout(`${nodeUrl}/nodes`);
+  return fetchWithTimeout(`${nodeUrl}/peers`);
 }
 
-/** Register a new peer with a node */
-export async function registerPeer(nodeUrl, peerUrl) {
-  return fetchWithTimeout(`${nodeUrl}/nodes/register`, {
+// ─── Balance ──────────────────────────────────────────────────────────────────
+
+/**
+ * GET /balance/{address}
+ * Returns: { address, balance }
+ */
+export async function getBalance(nodeUrl, address) {
+  return fetchWithTimeout(`${nodeUrl}/balance/${encodeURIComponent(address)}`);
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+/**
+ * POST /transactions
+ * Body: { to: string, amount: number }
+ * Returns: { message, tx }
+ *
+ * Note: The node signs the transaction automatically with its own wallet.
+ */
+export async function submitTransaction(nodeUrl, { to, amount }) {
+  return fetchWithTimeout(`${nodeUrl}/transactions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nodes: [peerUrl] }),
+    body: JSON.stringify({ to, amount: Number(amount) }),
   });
 }
 
-// ─── Mining & Transactions ────────────────────────────────────────────────────
+// ─── Faucet ───────────────────────────────────────────────────────────────────
 
-/** Mine a new block on a node */
-export async function mineBlock(nodeUrl, data = 'Mined via BlockView') {
+/**
+ * POST /faucet
+ * Body: { to: string, amount: number }
+ * Returns: { message, tx }
+ */
+export async function faucetDrop(nodeUrl, { to, amount }) {
+  return fetchWithTimeout(`${nodeUrl}/faucet`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to, amount: Number(amount) }),
+  });
+}
+
+// ─── Mining ───────────────────────────────────────────────────────────────────
+
+/**
+ * POST /mine
+ * Body: { miner_address: string }
+ * Returns: { message, block }
+ */
+export async function mineBlock(nodeUrl, minerAddress = '') {
   return fetchWithTimeout(`${nodeUrl}/mine`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data }),
+    body: JSON.stringify({ miner_address: minerAddress }),
   });
-}
-
-/** Get pending transactions in the mempool */
-export async function getPendingTransactions(nodeUrl) {
-  return fetchWithTimeout(`${nodeUrl}/transactions/pending`);
-}
-
-/** Submit a new transaction to a node */
-export async function submitTransaction(nodeUrl, transaction) {
-  return fetchWithTimeout(`${nodeUrl}/transactions/new`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(transaction),
-  });
-}
-
-// ─── Consensus ────────────────────────────────────────────────────────────────
-
-/** Trigger consensus / chain resolution on a node */
-export async function resolveConflicts(nodeUrl) {
-  return fetchWithTimeout(`${nodeUrl}/nodes/resolve`);
 }

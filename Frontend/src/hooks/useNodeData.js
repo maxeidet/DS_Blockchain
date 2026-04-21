@@ -1,20 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getChain, getPeers, getPendingTransactions } from '../api/blockchain';
+import { getStatus, getBlocks, getMempool, getPeers } from '../api/blockchain';
 
 const DEFAULT_INTERVAL = 5000; // ms between polls
 
 /**
  * useNodeData
  *
- * Polls a single blockchain node for its current state.
+ * Polls a single GO_Blockchain node for its current state.
  *
- * @param {string} nodeUrl  – e.g. "http://localhost:5001"
+ * GO_Blockchain API:
+ *   GET /status  → { height, difficulty, mining_reward, mempool_size, is_valid,
+ *                    wallet_address, wallet_nonce, faucet_address }
+ *   GET /blocks  → Block[]
+ *   GET /mempool → Transaction[]
+ *   GET /peers   → string[]
+ *
+ * @param {string} nodeUrl  – e.g. "http://localhost:8080"
  * @param {number} interval – polling interval in milliseconds
  */
 export function useNodeData(nodeUrl, interval = DEFAULT_INTERVAL) {
-  const [chain, setChain]               = useState(null);
-  const [peers, setPeers]               = useState([]);
-  const [pending, setPending]           = useState([]);
+  const [blocks, setBlocks]             = useState(null);   // Block[]
+  const [status, setStatus]             = useState(null);   // GO /status object
+  const [peers, setPeers]               = useState([]);     // string[]
+  const [mempool, setMempool]           = useState([]);     // Transaction[]
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const [lastUpdated, setLastUpdated]   = useState(null);
@@ -26,20 +34,23 @@ export function useNodeData(nodeUrl, interval = DEFAULT_INTERVAL) {
     if (!nodeUrl) return;
     setLoading(true);
     try {
-      // Fetch in parallel
-      const [chainData, peersData, pendingData] = await Promise.allSettled([
-        getChain(nodeUrl),
+      // Fetch all endpoints in parallel; tolerate individual failures
+      const [statusRes, blocksRes, mempoolRes, peersRes] = await Promise.allSettled([
+        getStatus(nodeUrl),
+        getBlocks(nodeUrl),
+        getMempool(nodeUrl),
         getPeers(nodeUrl),
-        getPendingTransactions(nodeUrl),
       ]);
 
-      if (chainData.status === 'fulfilled')   setChain(chainData.value);
-      if (peersData.status === 'fulfilled')   setPeers(peersData.value?.nodes ?? peersData.value ?? []);
-      if (pendingData.status === 'fulfilled') setPending(pendingData.value?.transactions ?? pendingData.value ?? []);
+      if (statusRes.status  === 'fulfilled') setStatus(statusRes.value);
+      if (blocksRes.status  === 'fulfilled') setBlocks(blocksRes.value);
+      if (mempoolRes.status === 'fulfilled') setMempool(Array.isArray(mempoolRes.value) ? mempoolRes.value : []);
+      if (peersRes.status   === 'fulfilled') setPeers(Array.isArray(peersRes.value) ? peersRes.value : []);
 
-      // If at least the chain responded, consider node online
-      setOnline(chainData.status === 'fulfilled');
-      setError(chainData.status === 'rejected' ? chainData.reason?.message : null);
+      // Node is online if /status responded OK
+      const isOnline = statusRes.status === 'fulfilled';
+      setOnline(isOnline);
+      setError(isOnline ? null : (statusRes.reason?.message ?? 'Unreachable'));
     } catch (err) {
       setOnline(false);
       setError(err.message);
@@ -56,5 +67,5 @@ export function useNodeData(nodeUrl, interval = DEFAULT_INTERVAL) {
     return () => clearInterval(intervalRef.current);
   }, [fetchAll, interval]);
 
-  return { chain, peers, pending, loading, error, lastUpdated, online, refetch: fetchAll };
+  return { blocks, status, peers, mempool, loading, error, lastUpdated, online, refetch: fetchAll };
 }

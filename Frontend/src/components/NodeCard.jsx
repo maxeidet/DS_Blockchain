@@ -1,21 +1,24 @@
 import React from 'react';
 
 /**
- * NodeCard – Shows live status summary for a single blockchain node.
+ * NodeCard – Shows live status summary for a single GO_Blockchain node.
  *
  * Props:
- *   nodeUrl   {string}   – e.g. "http://localhost:5000"
- *   data      {object}   – { chain, peers, pending, online, loading, error, lastUpdated }
+ *   nodeUrl   {string}   – e.g. "http://localhost:8080"
+ *   data      {object}   – { blocks, status, peers, mempool, online, loading, error, lastUpdated }
  *   onRemove  {function} – callback to remove this node
  *   selected  {boolean}
  *   onClick   {function}
+ *
+ * GO /status fields used:
+ *   height, mempool_size, is_valid, difficulty, wallet_address, faucet_address
  */
 export default function NodeCard({ nodeUrl, data, onRemove, selected, onClick }) {
-  const { chain, peers, pending, online, loading, error, lastUpdated } = data;
+  const { blocks, status, peers, mempool, online, loading, error, lastUpdated } = data;
 
-  const blockCount   = chain?.chain?.length ?? chain?.length ?? '—';
-  const peerCount    = Array.isArray(peers) ? peers.length : '—';
-  const pendingCount = Array.isArray(pending) ? pending.length : '—';
+  const blockCount   = status?.height != null ? status.height + 1 : (Array.isArray(blocks) ? blocks.length : '—');
+  const peerCount    = Array.isArray(peers) ? peers.length : (status?.peer_count ?? '—');
+  const pendingCount = status?.mempool_size ?? (Array.isArray(mempool) ? mempool.length : '—');
 
   return (
     <div
@@ -43,11 +46,20 @@ export default function NodeCard({ nodeUrl, data, onRemove, selected, onClick })
       </div>
 
       {/* Status badge */}
-      {loading && !chain && (
+      {loading && !status && (
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 10 }}>Connecting…</div>
       )}
       {error && (
         <div className="badge badge-red" style={{ marginBottom: 10 }}>{error}</div>
+      )}
+
+      {/* Extra info when online */}
+      {status && (
+        <div style={{ marginBottom: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <span className="badge badge-blue">diff {status.difficulty}</span>
+          {status.is_valid === true  && <span className="badge badge-green">✓ valid</span>}
+          {status.is_valid === false && <span className="badge badge-red">✗ invalid</span>}
+        </div>
       )}
 
       {/* Stats grid */}
