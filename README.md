@@ -1,6 +1,6 @@
 # GO_Blockchain & BlockView Explorer
 
-Welcome to **GO_Blockchain** and **BlockView Explorer**! This project consists of a custom, lightweight blockchain written in Go paired with an interactive, modern web explorer built in React + Vite for real-time monitoring, transaction handling, and security analysis.
+This project consists of a custom, lightweight blockchain written in Go paired with an interactive, modern web explorer built in React + Vite for real-time monitoring, transaction handling, and security analysis.
 
 The project is divided into two main components:
 1. **`GO_Blockchain`**: A distributed Go node that supports Proof-of-Work (PoW) consensus, P2P TCP networking, automatic UDP-based peer discovery, and ECDSA cryptographic wallets.

@@ -4,6 +4,7 @@ import { useNodeData } from './hooks/useNodeData';
 import NodeCard from './components/NodeCard';
 import BlockChainView from './components/BlockList';
 import NodeActions from './components/NodeActions';
+import MempoolView from './components/MempoolView';
 import AttackPanel from './components/AttackPanel';
 
 // ─── Per-node data wrapper ────────────────────────────────────────────────────
@@ -81,7 +82,7 @@ export default function App() {
   const { nodes, addNode, removeNode } = useNodeRegistry();
   const [selectedNode, setSelectedNode] = useState(null);
   const [newNodeUrl, setNewNodeUrl] = useState('');
-  const [activeTab, setActiveTab] = useState('chain'); // 'chain' | 'actions' | 'security'
+  const [activeTab, setActiveTab] = useState('chain'); // 'chain' | 'mempool' | 'actions' | 'security'
 
   const handleAddNode = useCallback((e) => {
     e.preventDefault();
@@ -194,6 +195,7 @@ export default function App() {
                     <div style={{ display: 'flex', gap: 8 }}>
                       {[
                         { id: 'chain', label: 'Chain' },
+                        { id: 'mempool', label: 'Mempool' },
                         { id: 'actions', label: 'Actions' },
                         { id: 'security', label: 'Security' },
                       ].map(({ id, label }) => (
@@ -223,6 +225,15 @@ export default function App() {
                   {activeTab === 'chain' ? (
                     <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                       <BlockChainView blocks={data.blocks} />
+                    </div>
+                  ) : activeTab === 'mempool' ? (
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+                      <MempoolView
+                        mempool={data.mempool}
+                        nodeUrl={effective}
+                        onAction={data.refetch}
+                        onGoToActions={() => setActiveTab('actions')}
+                      />
                     </div>
                   ) : activeTab === 'actions' ? (
                     <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>

@@ -114,8 +114,8 @@ export default function NodeActions({ nodeUrl, data, onAction }) {
 
   // Keep miner field in sync when status loads
   React.useEffect(() => {
-    if (status?.wallet_address && !minerAddr) {
-      setMinerAddr(status.wallet_address);
+    if (status?.wallet_address) {
+      setMinerAddr(current => current || status.wallet_address);
     }
   }, [status?.wallet_address]);
 

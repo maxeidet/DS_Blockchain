@@ -150,12 +150,11 @@ function Modal({ isOpen, onClose, title, children }) {
 }
 
 
-function StepFlow({ steps, running, result }) {
+function StepFlow({ steps, result }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       {steps.map((step, i) => {
         const isLast = i === steps.length - 1;
-        const stepDone = result !== null || !running;
         const isDefenseStep = isLast;
 
         let stepColor = 'var(--text-muted)';
@@ -294,7 +293,7 @@ function AttackCard({ name, result, running, onOpenInfo }) {
               Running attack simulation...
             </div>
           ) : (
-            <StepFlow steps={meta.steps ?? []} running={isRunning} result={cardResult} />
+            <StepFlow steps={meta.steps ?? []} result={cardResult} />
           )}
         </div>
 
