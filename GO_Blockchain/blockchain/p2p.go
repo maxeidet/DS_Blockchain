@@ -18,7 +18,7 @@ type Message struct {
 }
 
 type InvItem struct {
-	Kind string `json:"kind"` // "tx" eller "block"
+	Kind string `json:"kind"` // "tx" or "block"
 	ID   string `json:"id"`
 }
 
@@ -497,7 +497,7 @@ func (n *P2PNode) handleHandshake(hs HandshakeMessage) bool {
 		if n.addPeer(peer) {
 			log.Printf("learned new peer %s from %s\n", peer, hs.AdvertiseAddr)
 
-			// handshakea direkt med nya peeren
+			// handshake directly with the new peer
 			go func(p string) {
 				if err := n.sendHandshakeToPeer(p); err != nil {
 					log.Printf("handshake to learned peer %s failed: %v\n", p, err)

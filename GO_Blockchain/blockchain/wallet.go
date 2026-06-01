@@ -77,7 +77,7 @@ func VerifySignature(pubKeyBytes []byte, data []byte, sigHex string) (bool, erro
 	}
 
 	if len(sigBytes) != 64 {
-		return false, errors.New("ogiltig signaturlängd")
+		return false, errors.New("invalid signature length")
 	}
 
 	r := new(big.Int).SetBytes(sigBytes[:32])
@@ -91,7 +91,7 @@ func VerifySignature(pubKeyBytes []byte, data []byte, sigHex string) (bool, erro
 func ParsePublicKey(pubKeyBytes []byte) (*ecdsa.PublicKey, error) {
 	// uncompressed P-256 = 1 + 32 + 32 = 65 bytes
 	if len(pubKeyBytes) != 65 || pubKeyBytes[0] != 0x04 {
-		return nil, errors.New("ogiltigt public key-format")
+		return nil, errors.New("invalid public key format")
 	}
 
 	x := new(big.Int).SetBytes(pubKeyBytes[1:33])
@@ -104,7 +104,7 @@ func ParsePublicKey(pubKeyBytes []byte) (*ecdsa.PublicKey, error) {
 	}
 
 	if !pub.Curve.IsOnCurve(pub.X, pub.Y) {
-		return nil, errors.New("public key ligger inte på kurvan")
+		return nil, errors.New("public key is not on the curve")
 	}
 
 	return pub, nil

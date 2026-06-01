@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type Blockchain struct {
@@ -75,7 +76,7 @@ func (bc *Blockchain) AddBlock(transactions []Transaction) (Block, error) {
 
 func (bc *Blockchain) AddTransactionToMempool(tx Transaction) error {
 	if tx.Type != "transfer" {
-		return fmt.Errorf("bara transfer-transaktioner får läggas i mempool, fick: %s", tx.Type)
+		return fmt.Errorf("only transfer transactions are allowed in mempool, got: %s", tx.Type)
 	}
 
 	if err := bc.ValidateTransaction(tx); err != nil {
@@ -84,7 +85,7 @@ func (bc *Blockchain) AddTransactionToMempool(tx Transaction) error {
 
 	added := bc.Mempool.Add(tx)
 	if !added {
-		return fmt.Errorf("transaktionen finns redan i mempool: %s", tx.ID)
+		return fmt.Errorf("transaction already exists in mempool: %s", tx.ID)
 	}
 
 	return nil
@@ -92,12 +93,12 @@ func (bc *Blockchain) AddTransactionToMempool(tx Transaction) error {
 
 func (bc *Blockchain) MineMempool(minerAddress string) (Block, error) {
 	if minerAddress == "" {
-		return Block{}, errors.New("miner address saknas")
+		return Block{}, errors.New("miner address missing")
 	}
 
 	mempoolTxs := bc.Mempool.GetAll()
 	if len(mempoolTxs) == 0 {
-		return Block{}, errors.New("mempool är tom")
+		return Block{}, errors.New("mempool is empty")
 	}
 
 	coinbaseTx := NewCoinbaseTransaction(minerAddress, bc.MiningReward)
@@ -176,22 +177,26 @@ func cloneBlocks(src []Block) []Block {
 
 func IsBlockValid(newBlock, prevBlock Block) error {
 	if newBlock.Index != prevBlock.Index+1 {
-		return fmt.Errorf("fel index: got %d want %d", newBlock.Index, prevBlock.Index+1)
+		return fmt.Errorf("invalid index: got %d want %d", newBlock.Index, prevBlock.Index+1)
 	}
 
 	if newBlock.PrevHash != prevBlock.Hash {
-		return errors.New("prev_hash matchar inte föregående block")
+		return errors.New("prev_hash does not match previous block")
 	}
 
 	recalculatedHash := CalculateHash(newBlock)
 	if newBlock.Hash != recalculatedHash {
-		return errors.New("blockets hash är ogiltig")
+		return errors.New("invalid block hash")
 	}
 
 	targetPrefix := strings.Repeat("0", newBlock.Difficulty)
 	if !strings.HasPrefix(newBlock.Hash, targetPrefix) {
-		return fmt.Errorf("hash uppfyller inte difficulty-kravet: %s", newBlock.Hash)
+		return fmt.Errorf("hash does not meet difficulty requirement: %s", newBlock.Hash)
 	}
+	if newBlock.Timestamp > time.Now().Add(2*time.Hour).UnixMilli() {
+		return errors.New("block timestamp is too far in the future")
+	}
+
 
 	return nil
 }
@@ -202,25 +207,25 @@ func (bc *Blockchain) IsValid() error {
 
 func (bc *Blockchain) ValidateChain(blocks []Block) error {
 	if len(blocks) == 0 {
-		return errors.New("kedjan är tom")
+		return errors.New("chain is empty")
 	}
 
 	genesis := blocks[0]
 	if genesis.Index != 0 {
-		return errors.New("genesis har fel index")
+		return errors.New("genesis has wrong index")
 	}
 
 	if genesis.Hash != CalculateHash(genesis) {
-		return errors.New("genesis hash är ogiltig")
+		return errors.New("invalid genesis hash")
 	}
 
 	targetPrefix := strings.Repeat("0", genesis.Difficulty)
 	if !strings.HasPrefix(genesis.Hash, targetPrefix) {
-		return errors.New("genesis uppfyller inte difficulty")
+		return errors.New("genesis does not meet difficulty")
 	}
 
 	if err := bc.ValidateGenesisTransactions(genesis.Transactions); err != nil {
-		return fmt.Errorf("genesis-transaktioner är ogiltiga: %w", err)
+		return fmt.Errorf("invalid genesis transactions: %w", err)
 	}
 
 	balances := make(map[string]int)
@@ -229,7 +234,7 @@ func (bc *Blockchain) ValidateChain(blocks []Block) error {
 
 	for _, tx := range genesis.Transactions {
 		if seenTxIDs[tx.ID] {
-			return fmt.Errorf("dublett-transaktion i genesis: %s", tx.ID)
+			return fmt.Errorf("duplicate transaction in genesis: %s", tx.ID)
 		}
 		seenTxIDs[tx.ID] = true
 		applyTransactionToState(tx, balances, nonces)
@@ -240,11 +245,11 @@ func (bc *Blockchain) ValidateChain(blocks []Block) error {
 		prev := blocks[i-1]
 
 		if err := IsBlockValid(curr, prev); err != nil {
-			return fmt.Errorf("block %d ogiltigt: %w", i, err)
+			return fmt.Errorf("invalid block %d: %w", i, err)
 		}
 
 		if err := bc.ValidateBlockTransactionsAgainstState(curr.Transactions, balances, nonces, seenTxIDs); err != nil {
-			return fmt.Errorf("block %d har ogiltiga transaktioner: %w", i, err)
+			return fmt.Errorf("block %d has invalid transactions: %w", i, err)
 		}
 
 		for _, tx := range curr.Transactions {
@@ -305,32 +310,32 @@ func (bc *Blockchain) NextNonce(address string) uint64 {
 
 func (bc *Blockchain) ValidateTransaction(tx Transaction) error {
 	if tx.To == "" {
-		return errors.New("mottagaradress saknas")
+		return errors.New("recipient address missing")
 	}
 
 	if tx.Amount <= 0 {
-		return errors.New("amount måste vara större än 0")
+		return errors.New("amount must be greater than 0")
 	}
 
 	switch tx.Type {
 	case "genesis":
 		if tx.From != "" {
-			return errors.New("genesis-transaktion får inte ha avsändare")
+			return errors.New("genesis transaction cannot have sender")
 		}
 		if tx.Nonce != 0 {
-			return errors.New("genesis-transaktion får inte ha nonce")
+			return errors.New("genesis transaction cannot have nonce")
 		}
 		return nil
 
 	case "coinbase":
 		if tx.From != "" {
-			return errors.New("coinbase-transaktion får inte ha avsändare")
+			return errors.New("coinbase transaction cannot have sender")
 		}
 		if tx.Amount > bc.MiningReward {
-			return fmt.Errorf("coinbase reward är för hög: %d > %d", tx.Amount, bc.MiningReward)
+			return fmt.Errorf("coinbase reward is too high: %d > %d", tx.Amount, bc.MiningReward)
 		}
 		if tx.Nonce != 0 {
-			return errors.New("coinbase-transaktion får inte ha nonce")
+			return errors.New("coinbase transaction cannot have nonce")
 		}
 		return nil
 
@@ -341,52 +346,52 @@ func (bc *Blockchain) ValidateTransaction(tx Transaction) error {
 
 		expectedNonce := bc.NextNonce(tx.From)
 		if tx.Nonce != expectedNonce {
-			return fmt.Errorf("ogiltig nonce: got %d want %d", tx.Nonce, expectedNonce)
+			return fmt.Errorf("invalid nonce: got %d want %d", tx.Nonce, expectedNonce)
 		}
 
 		balance := bc.GetBalance(tx.From)
 		if balance < tx.Amount {
-			return fmt.Errorf("otillräckligt saldo: balance=%d amount=%d", balance, tx.Amount)
+			return fmt.Errorf("insufficient balance: balance=%d amount=%d", balance, tx.Amount)
 		}
 
 		return nil
 
 	default:
-		return fmt.Errorf("okänd transaktionstyp: %s", tx.Type)
+		return fmt.Errorf("unknown transaction type: %s", tx.Type)
 	}
 }
 
 func (bc *Blockchain) ValidateGenesisTransactions(txs []Transaction) error {
 	if len(txs) == 0 {
-		return errors.New("genesis måste innehålla minst en transaktion")
+		return errors.New("genesis must contain at least one transaction")
 	}
 
 	seenTxIDs := make(map[string]bool)
 
 	for _, tx := range txs {
 		if seenTxIDs[tx.ID] {
-			return fmt.Errorf("dublett-transaktion i genesis: %s", tx.ID)
+			return fmt.Errorf("duplicate transaction in genesis: %s", tx.ID)
 		}
 		seenTxIDs[tx.ID] = true
 
 		if tx.Type != "genesis" {
-			return fmt.Errorf("genesis-blocket får bara innehålla genesis-transaktioner, fick: %s", tx.Type)
+			return fmt.Errorf("genesis block can only contain genesis transactions, got: %s", tx.Type)
 		}
 
 		if tx.From != "" {
-			return errors.New("genesis-transaktioner måste ha tom avsändare")
+			return errors.New("genesis transactions must have empty sender")
 		}
 
 		if tx.To == "" {
-			return errors.New("genesis-transaktion saknar mottagare")
+			return errors.New("genesis transaction missing recipient")
 		}
 
 		if tx.Amount <= 0 {
-			return fmt.Errorf("genesis-transaktion har ogiltigt amount: %d", tx.Amount)
+			return fmt.Errorf("genesis transaction has invalid amount: %d", tx.Amount)
 		}
 
 		if tx.Nonce != 0 {
-			return errors.New("genesis-transaktion får inte ha nonce")
+			return errors.New("genesis transaction cannot have nonce")
 		}
 	}
 
@@ -395,7 +400,7 @@ func (bc *Blockchain) ValidateGenesisTransactions(txs []Transaction) error {
 
 func (bc *Blockchain) ValidateBlockTransactions(txs []Transaction) error {
 	if len(txs) == 0 {
-		return errors.New("kan inte skapa block utan transaktioner")
+		return errors.New("cannot create block without transactions")
 	}
 
 	balances := bc.buildBalancesFromCurrentChain()
@@ -412,7 +417,7 @@ func (bc *Blockchain) ValidateBlockTransactionsAgainstState(
 	seenTxIDs map[string]bool,
 ) error {
 	if len(txs) == 0 {
-		return errors.New("kan inte skapa block utan transaktioner")
+		return errors.New("cannot create block without transactions")
 	}
 
 	tempBalances := copyBalances(balances)
@@ -421,15 +426,15 @@ func (bc *Blockchain) ValidateBlockTransactionsAgainstState(
 
 	for i, tx := range txs {
 		if seenTxIDs[tx.ID] {
-			return fmt.Errorf("transaktionen finns redan i kedjan: %s", tx.ID)
+			return fmt.Errorf("transaction already exists in chain: %s", tx.ID)
 		}
 
 		if tx.To == "" {
-			return errors.New("mottagaradress saknas")
+			return errors.New("recipient address missing")
 		}
 
 		if tx.Amount <= 0 {
-			return fmt.Errorf("ogiltigt amount i tx %s", tx.ID)
+			return fmt.Errorf("invalid amount in tx %s", tx.ID)
 		}
 
 		switch tx.Type {
@@ -437,40 +442,40 @@ func (bc *Blockchain) ValidateBlockTransactionsAgainstState(
 			coinbaseCount++
 
 			if coinbaseCount > 1 {
-				return errors.New("ett block får bara innehålla en coinbase-transaktion")
+				return errors.New("a block can only contain one coinbase transaction")
 			}
 
 			if i != 0 {
-				return errors.New("coinbase-transaktionen måste ligga först i blocket")
+				return errors.New("coinbase transaction must be first in block")
 			}
 
 			if tx.From != "" {
-				return errors.New("coinbase-transaktion får inte ha avsändare")
+				return errors.New("coinbase transaction cannot have sender")
 			}
 
 			if tx.Amount > bc.MiningReward {
-				return fmt.Errorf("coinbase reward är för hög: %d > %d", tx.Amount, bc.MiningReward)
+				return fmt.Errorf("coinbase reward is too high: %d > %d", tx.Amount, bc.MiningReward)
 			}
 
 			if tx.Nonce != 0 {
-				return errors.New("coinbase-transaktion får inte ha nonce")
+				return errors.New("coinbase transaction cannot have nonce")
 			}
 
 			applyTransactionToState(tx, tempBalances, tempNonces)
 
 		case "transfer":
 			if tx.From == "" {
-				return fmt.Errorf("transfer-transaktion %s saknar avsändare", tx.ID)
+				return fmt.Errorf("transfer transaction %s missing sender", tx.ID)
 			}
 
 			if err := bc.validateTransferBasics(tx); err != nil {
-				return fmt.Errorf("ogiltig transfer-transaktion %s: %w", tx.ID, err)
+				return fmt.Errorf("invalid transfer transaction %s: %w", tx.ID, err)
 			}
 
 			expectedNonce := tempNonces[tx.From] + 1
 			if tx.Nonce != expectedNonce {
 				return fmt.Errorf(
-					"adress %s har ogiltig nonce: got %d want %d",
+					"adress %s har invalid nonce: got %d want %d",
 					tx.From,
 					tx.Nonce,
 					expectedNonce,
@@ -479,7 +484,7 @@ func (bc *Blockchain) ValidateBlockTransactionsAgainstState(
 
 			if tempBalances[tx.From] < tx.Amount {
 				return fmt.Errorf(
-					"adress %s försöker spendera %d men har bara %d",
+					"address %s trying to spend %d but only has %d",
 					tx.From,
 					tx.Amount,
 					tempBalances[tx.From],
@@ -489,10 +494,10 @@ func (bc *Blockchain) ValidateBlockTransactionsAgainstState(
 			applyTransactionToState(tx, tempBalances, tempNonces)
 
 		case "genesis":
-			return errors.New("genesis-transaktioner får inte förekomma i vanliga block")
+			return errors.New("genesis transactions cannot appear in regular blocks")
 
 		default:
-			return fmt.Errorf("okänd transaktionstyp: %s", tx.Type)
+			return fmt.Errorf("unknown transaction type: %s", tx.Type)
 		}
 	}
 
@@ -508,46 +513,46 @@ func (bc *Blockchain) ValidateBlockTransactionsAgainstState(
 
 func (bc *Blockchain) validateTransferBasics(tx Transaction) error {
 	if tx.From == "" {
-		return errors.New("transfer-transaktion måste ha avsändare")
+		return errors.New("transfer transaction must have sender")
 	}
 
 	if tx.From == tx.To {
-		return errors.New("kan inte skicka till samma adress")
+		return errors.New("cannot send to the same address")
 	}
 
 	if tx.Nonce == 0 {
-		return errors.New("transfer-transaktion måste ha nonce > 0")
+		return errors.New("transfer transaction must have nonce > 0")
 	}
 
 	if tx.PublicKey == "" {
-		return errors.New("transfer-transaktion saknar public key")
+		return errors.New("transfer transaction missing public key")
 	}
 
 	if tx.Signature == "" {
-		return errors.New("transfer-transaktion saknar signatur")
+		return errors.New("transfer transaction missing signature")
 	}
 
 	pubKeyBytes, err := hex.DecodeString(tx.PublicKey)
 	if err != nil {
-		return errors.New("ogiltig public key encoding")
+		return errors.New("invalid public key encoding")
 	}
 
 	derivedAddress := AddressFromPublicKey(pubKeyBytes)
 	if derivedAddress != tx.From {
-		return errors.New("from-adressen matchar inte public key")
+		return errors.New("from address does not match public key")
 	}
 
 	signBytes, err := tx.SigningBytes()
 	if err != nil {
-		return fmt.Errorf("kunde inte bygga signeringsunderlag: %w", err)
+		return fmt.Errorf("could not build signing bytes: %w", err)
 	}
 
 	ok, err := VerifySignature(pubKeyBytes, signBytes, tx.Signature)
 	if err != nil {
-		return fmt.Errorf("signaturverifiering misslyckades: %w", err)
+		return fmt.Errorf("signature verification failed: %w", err)
 	}
 	if !ok {
-		return errors.New("ogiltig signatur")
+		return errors.New("invalid signature")
 	}
 
 	return nil

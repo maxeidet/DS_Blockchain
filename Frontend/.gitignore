@@ -1,26 +1,49 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+
+.vite/
+.parcel-cache/
+.eslintcache
+
 # Logs
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Editor directories and files
+# IDEs and Editors
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-go.mod
-
+*.swo
+.patch/

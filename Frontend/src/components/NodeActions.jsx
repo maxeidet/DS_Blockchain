@@ -51,8 +51,8 @@ function ActionButton({ btnState, onClick, type = 'button', children, style = {}
                 : undefined;
 
   const label = isLoading ? <Spinner />
-              : isSuccess ? '✓ Done'
-              : isError   ? '✕ Failed'
+              : isSuccess ? 'Done'
+              : isError   ? 'Failed'
               : children;
 
   return (
@@ -196,7 +196,7 @@ export default function NodeActions({ nodeUrl, data, onAction }) {
         {/* Faucet Form */}
         <div className="card">
           <h3 style={{ marginBottom: 14, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-            🚰 Faucet
+            Faucet
             <span style={{ fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-muted)', marginLeft: 8 }}>
               (request tokens from faucet wallet)
             </span>
@@ -224,7 +224,7 @@ export default function NodeActions({ nodeUrl, data, onAction }) {
 
         {/* Mine */}
         <div className="card">
-          <h3 style={{ marginBottom: 12, fontSize: '0.95rem' }}>⛏ Mining</h3>
+          <h3 style={{ marginBottom: 12, fontSize: '0.95rem' }}>Mining</h3>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               placeholder="Miner address (defaults to node wallet)"

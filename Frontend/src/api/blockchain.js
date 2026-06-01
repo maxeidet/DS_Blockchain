@@ -126,3 +126,18 @@ export async function mineBlock(nodeUrl, minerAddress = '') {
     body: JSON.stringify({ miner_address: minerAddress }),
   });
 }
+
+// ─── Attack Tests ─────────────────────────────────────────────────────────────
+
+/**
+ * POST /attack-test
+ * Runs all security attack scenarios on an isolated blockchain instance.
+ * Returns: { attacks: AttackResult[], summary: { total, blocked, leaked } }
+ */
+export async function runAttackTest(nodeUrl) {
+  return fetchWithTimeout(
+    `${nodeUrl}/attack-test`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+    15000, // attacks can take a moment (PoW mining internally)
+  );
+}

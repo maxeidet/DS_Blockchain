@@ -22,7 +22,7 @@ export default function BlockChainView({ blocks }) {
         height: 200, color: 'var(--text-muted)', fontSize: '0.9rem',
         flexDirection: 'column', gap: 10,
       }}>
-        <span style={{ fontSize: '2rem' }}>⛓</span>
+        <span style={{ fontSize: '2rem' }}></span>
         No block data yet. Select an online node.
       </div>
     );
@@ -261,7 +261,7 @@ function BlockDetailPanel({ block, isLatest, onClose }) {
             </div>
           </div>
         </div>
-        <button className="btn btn-ghost" onClick={onClose} style={{ padding: '6px 12px' }}>✕ Close</button>
+        <button className="btn btn-ghost" onClick={onClose} style={{ padding: '6px 12px' }}>Close</button>
       </div>
 
       {/* Main grid */}

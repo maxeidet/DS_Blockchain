@@ -41,7 +41,7 @@ export default function NodeCard({ nodeUrl, data, onRemove, selected, onClick })
           style={{ padding: '4px 10px', fontSize: '0.75rem' }}
           onClick={(e) => { e.stopPropagation(); onRemove(nodeUrl); }}
         >
-          ✕
+          
         </button>
       </div>
 
@@ -57,7 +57,7 @@ export default function NodeCard({ nodeUrl, data, onRemove, selected, onClick })
       {status && (
         <div style={{ marginBottom: 10, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <span className="badge badge-blue">diff {status.difficulty}</span>
-          {status.is_valid === true  && <span className="badge badge-green">✓ valid</span>}
+          {status.is_valid === true  && <span className="badge badge-green">valid</span>}
           {status.is_valid === false && <span className="badge badge-red">✗ invalid</span>}
         </div>
       )}

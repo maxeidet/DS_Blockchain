@@ -33,7 +33,7 @@ func (api *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/mine", api.handleMine)
 	mux.HandleFunc("/balance/", api.handleBalance)
 	mux.HandleFunc("/peers", api.handlePeers)
-	
+	mux.HandleFunc("/attack-test", api.handleAttackTest)
 }
 
 func (api *API) handleStatus(w http.ResponseWriter, r *http.Request) {
